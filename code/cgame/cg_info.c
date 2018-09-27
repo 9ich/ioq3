@@ -241,6 +241,9 @@ void CG_DrawInformation( void ) {
 	case GT_SINGLE_PLAYER:
 		s = "Single Player";
 		break;
+	case GT_BR:
+		s = "Batoru Rowaiaru";
+		break;
 	case GT_TOURNAMENT:
 		s = "Tournament";
 		break;

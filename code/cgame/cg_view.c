@@ -749,6 +749,50 @@ static void CG_PlayBufferedSounds( void ) {
 	}
 }
 
+/*
+=====================
+CG_AddBRCage
+=====================
+*/
+void CG_AddBRCage( void ) {
+	refEntity_t re;
+
+	// update radius
+	if(cg.brShrinkDuration != 0){
+		float t = (float)(cg.time-cg.brStageTime)/cg.brShrinkDuration;
+		cg.brRadius = LERP(cg.brStageRadiusA, cg.brStageRadiusB, MIN(1.0f, t));
+	}
+
+	// warning sound
+	if(cg.brStage != 0 && cg.brLastWarnStage != cg.brStage &&
+	   (cg.brNextStageTime - cg.time) < 3000){
+		cg.brLastWarnStage = cg.brStage;
+		trap_S_StartLocalSound(cgs.media.brWarnSound, CHAN_ANNOUNCER);
+	}
+
+	// cage
+	memset(&re, 0, sizeof re);
+	VectorCopy(cg.brOrigin, re.origin);
+	AnglesToAxis(vec3_origin, re.axis);
+	VectorScale(re.axis[0], cg.brRadius, re.axis[0]);
+	VectorScale(re.axis[1], cg.brRadius, re.axis[1]);
+	VectorScale(re.axis[2], cg.brRadius, re.axis[2]);
+	re.hModel = cgs.media.brSphere;
+	trap_R_AddRefEntityToScene(&re);
+
+	// warning cage
+	if(cg.brStage != 0 && cg.brNextStageTime != 0){
+		memset(&re, 0, sizeof re);
+		VectorCopy(cg.brOrigin, re.origin);
+		AnglesToAxis(vec3_origin, re.axis);
+		VectorScale(re.axis[0], cg.brWarnRadius, re.axis[0]);
+		VectorScale(re.axis[1], cg.brWarnRadius, re.axis[1]);
+		VectorScale(re.axis[2], cg.brWarnRadius, re.axis[2]);
+		re.hModel = cgs.media.brWarnSphere;
+		trap_R_AddRefEntityToScene(&re);
+	}
+}
+
 //=========================================================================
 
 /*
@@ -818,6 +862,7 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 		CG_AddMarks();
 		CG_AddParticles ();
 		CG_AddLocalEntities();
+		CG_AddBRCage();
 	}
 	CG_AddViewWeapon( &cg.predictedPlayerState );
 

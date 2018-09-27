@@ -788,6 +788,7 @@ static void CG_RegisterSounds( void ) {
 	trap_S_RegisterSound("sound/player/janet/taunt.wav", qfalse );
 #endif
 
+	cgs.media.brWarnSound = trap_S_RegisterSound("sound/misc/br_warn", qfalse);
 }
 
 
@@ -1007,6 +1008,8 @@ static void CG_RegisterGraphics( void ) {
 	cgs.media.medalAssist = trap_R_RegisterShaderNoMip( "medal_assist" );
 	cgs.media.medalCapture = trap_R_RegisterShaderNoMip( "medal_capture" );
 
+	cgs.media.brSphere = trap_R_RegisterModel( "models/misc/corral" );
+	cgs.media.brWarnSphere = trap_R_RegisterModel( "models/misc/corral_warning" );
 
 	memset( cg_items, 0, sizeof( cg_items ) );
 	memset( cg_weapons, 0, sizeof( cg_weapons ) );

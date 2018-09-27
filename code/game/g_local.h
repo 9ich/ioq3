@@ -407,6 +407,19 @@ typedef struct {
 #ifdef MISSIONPACK
 	int			portalSequence;
 #endif
+
+	int		brStage;
+	float	brInitRadius;		// stage N
+	float	brFinalRadius;		// stage 0
+	float	brStageRadiusA;
+	float	brStageRadiusB;
+	vec3_t	brOrigin;
+	float	brRadius;
+	float	brWarnRadius;		// where the cage will end up next stage
+	int		brStageTime;
+	int		brNextStageTime;	// when to start shrinking the cage
+	int		brShrinkDuration;
+	int		brItemSpawnTime;	// when next to spawn a random item
 } level_locals_t;
 
 
@@ -745,6 +758,11 @@ extern	vmCvar_t	g_enableBreath;
 extern	vmCvar_t	g_singlePlayer;
 extern	vmCvar_t	g_proxMineTimeout;
 extern	vmCvar_t	g_localTeamPref;
+extern	vmCvar_t	g_brStages;
+extern	vmCvar_t	g_brFinalRadius;
+extern	vmCvar_t	g_brShrinkDuration;
+extern	vmCvar_t	g_brStageDuration;
+extern	vmCvar_t	g_brItemSpawnInterval;
 
 void	trap_Print( const char *text );
 void	trap_Error( const char *text ) __attribute__((noreturn));

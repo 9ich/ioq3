@@ -797,6 +797,36 @@ static float CG_DrawTimer( float y ) {
 
 /*
 =================
+CG_DrawBRTimer
+=================
+*/
+static float CG_DrawBRTimer( float y ) {
+	char		*s;
+	int			w;
+	int			mins, seconds, tens;
+	int			msec;
+
+	msec = cg.brNextStageTime - cg.time;
+	if(msec <= -1000)
+		return;
+
+	seconds = msec / 1000;
+	mins = seconds / 60;
+	seconds -= mins * 60;
+	tens = seconds / 10;
+	seconds -= tens * 10;
+
+	s = va( "cage: %i%is", tens, seconds );
+	w = CG_DrawStrlen( s ) * BIGCHAR_WIDTH;
+
+	CG_DrawBigString( 635 - w, y + 2, s, 1.0F);
+
+	return y + BIGCHAR_HEIGHT + 4;
+}
+
+
+/*
+=================
 CG_DrawTeamOverlay
 =================
 */
@@ -989,6 +1019,9 @@ static void CG_DrawUpperRight(stereoFrame_t stereoFrame)
 	}
 	if (cg_drawFPS.integer && (stereoFrame == STEREO_CENTER || stereoFrame == STEREO_RIGHT)) {
 		y = CG_DrawFPS( y );
+	}
+	if ( cgs.gametype == GT_BR ) {
+		y = CG_DrawBRTimer( y );
 	}
 	if ( cg_drawTimer.integer ) {
 		y = CG_DrawTimer( y );

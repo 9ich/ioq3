@@ -639,6 +639,16 @@ typedef struct {
 	char			testModelName[MAX_QPATH];
 	qboolean		testGun;
 
+	int		brStage;
+	float	brStageRadiusA;
+	float	brStageRadiusB;
+	vec3_t	brOrigin;
+	float	brRadius;
+	float	brWarnRadius;		// where the cage will end up next stage
+	int		brStageTime;
+	int		brNextStageTime;	// when to start shrinking the cage
+	int		brShrinkDuration;
+	int		brLastWarnStage;
 } cg_t;
 
 
@@ -819,6 +829,10 @@ typedef struct {
 	qhandle_t	medalAssist;
 	qhandle_t	medalCapture;
 
+	// battle royale
+	qhandle_t	brSphere;
+	qhandle_t	brWarnSphere;
+
 	// sounds
 	sfxHandle_t	quadSound;
 	sfxHandle_t	tracerSound;
@@ -982,6 +996,7 @@ typedef struct {
 	sfxHandle_t	wstbimpdSound;
 	sfxHandle_t	wstbactvSound;
 
+	sfxHandle_t brWarnSound;
 } cgMedia_t;
 
 

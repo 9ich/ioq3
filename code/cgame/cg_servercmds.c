@@ -227,6 +227,36 @@ void CG_SetConfigValues( void ) {
 		cgs.flagStatus = s[0] - '0';
 	}
 #endif
+	else if( cgs.gametype == GT_BR ) {
+		s = CG_ConfigString( CS_BR_STAGE );
+		cg.brStage = s[0] - '0';
+
+		s = CG_ConfigString( CS_BR_RADIUS_A );
+		cg.brStageRadiusA = atof( s );
+
+		s = CG_ConfigString( CS_BR_RADIUS_B );
+		cg.brStageRadiusB = atof( s );
+
+		s = CG_ConfigString( CS_BR_WARN_RADIUS );
+		cg.brWarnRadius = atof( s );
+
+		s = CG_ConfigString( CS_BR_ORIGIN );
+		cg.brOrigin[0] = atof( s );
+		if(s && *s && (s = strchr( s+1, ' ' )))
+			cg.brOrigin[1] = atof( s+1 );
+		if(s && *s && (s = strchr( s+1, ' ' )))
+			cg.brOrigin[2] = atof( s+1 );
+
+		s = CG_ConfigString( CS_BR_SHRINK_DURATION );
+		cg.brShrinkDuration = atoi( s );
+
+		s = CG_ConfigString( CS_BR_STAGE_TIME );
+		cg.brStageTime = atoi( s );
+
+		s = CG_ConfigString( CS_BR_NEXT_STAGE_TIME );
+		cg.brNextStageTime = atoi( s );
+	}
+
 	cg.warmup = atoi( CG_ConfigString( CS_WARMUP ) );
 }
 
@@ -332,6 +362,27 @@ static void CG_ConfigStringModified( void ) {
 #endif
 	} else if ( num == CS_INTERMISSION ) {
 		cg.intermissionStarted = atoi( str );
+	} else if ( num == CS_BR_STAGE ) {
+		cg.brStage = atoi( str );
+	} else if ( num == CS_BR_RADIUS_A ) {
+		cg.brStageRadiusA = atof( str );
+	} else if ( num == CS_BR_RADIUS_B ) {
+		cg.brStageRadiusB = atof( str );
+	} else if ( num == CS_BR_WARN_RADIUS ) {
+		cg.brWarnRadius = atof( str );
+	} else if ( num == CS_BR_ORIGIN ) {
+		const char *p = str;
+		cg.brOrigin[0] = atof( p );
+		if(p && *p && (p = strchr( p+1, ' ' )))
+			cg.brOrigin[1] = atof( p+1 );
+		if(p && *p && (p = strchr( p+1, ' ' )))
+			cg.brOrigin[2] = atof( p+1 );
+	} else if ( num == CS_BR_STAGE_TIME ) {
+		cg.brStageTime = atoi( str );
+	} else if ( num == CS_BR_NEXT_STAGE_TIME ) {
+		cg.brNextStageTime = atoi( str );
+	} else if ( num == CS_BR_SHRINK_DURATION ) {
+		cg.brShrinkDuration = atoi( str );
 	} else if ( num >= CS_MODELS && num < CS_MODELS+MAX_MODELS ) {
 		cgs.gameModels[ num-CS_MODELS ] = trap_R_RegisterModel( str );
 	} else if ( num >= CS_SOUNDS && num < CS_SOUNDS+MAX_SOUNDS ) {

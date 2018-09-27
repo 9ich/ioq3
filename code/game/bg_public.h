@@ -82,7 +82,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define	CS_ITEMS				27		// string of 0's and 1's that tell which items are present
 
-#define	CS_MODELS				32
+#define CS_BR_ORIGIN			28
+#define CS_BR_RADIUS_A			29
+#define CS_BR_RADIUS_B			30
+#define CS_BR_SHRINK_DURATION	31
+#define CS_BR_STAGE				32
+#define CS_BR_STAGE_TIME		33
+#define CS_BR_NEXT_STAGE_TIME	34
+#define CS_BR_WARN_RADIUS		35
+
+#define	CS_MODELS				64 //32
 #define	CS_SOUNDS				(CS_MODELS+MAX_MODELS)
 #define	CS_PLAYERS				(CS_SOUNDS+MAX_SOUNDS)
 #define CS_LOCATIONS			(CS_PLAYERS+MAX_CLIENTS)
@@ -98,6 +107,7 @@ typedef enum {
 	GT_FFA,				// free for all
 	GT_TOURNAMENT,		// one on one tournament
 	GT_SINGLE_PLAYER,	// single player ffa
+	GT_BR,			// battle royale
 
 	//-- team games go after this --
 

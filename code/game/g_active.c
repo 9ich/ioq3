@@ -1001,16 +1001,29 @@ void ClientThink_real( gentity_t *ent ) {
 			// forcerespawn is to prevent users from waiting out powerups
 			if ( g_forcerespawn.integer > 0 && 
 				( level.time - client->respawnTime ) > g_forcerespawn.integer * 1000 ) {
-				ClientRespawn( ent );
+				if(g_gametype.integer == GT_BR)
+					SetTeam(ent, "spectator");
+				else
+					ClientRespawn( ent );
 				return;
 			}
 		
 			// pressing attack or use is the normal respawn method
 			if ( ucmd->buttons & ( BUTTON_ATTACK | BUTTON_USE_HOLDABLE ) ) {
-				ClientRespawn( ent );
+				if(g_gametype.integer == GT_BR)
+					SetTeam(ent, "spectator");
+				else
+					ClientRespawn( ent );
 			}
 		}
 		return;
+	}
+
+	if ( g_gametype.integer == GT_BR ) {
+		if ( Distance( client->ps.origin, level.brOrigin ) > level.brRadius &&
+		   level.time > ent->pain_debounce_time ) {
+			G_Damage( ent, NULL, NULL, NULL, NULL, 10, 0, MOD_UNKNOWN );
+		}
 	}
 
 	// perform once-a-second actions

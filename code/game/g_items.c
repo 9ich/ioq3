@@ -548,7 +548,7 @@ void Touch_Item (gentity_t *ent, gentity_t *other, trace_t *trace) {
 	// A negative respawn times means to never respawn this item (but don't 
 	// delete it).  This is used by items that are respawned by third party 
 	// events such as ctf flags
-	if ( respawn <= 0 ) {
+	if ( respawn <= 0 || g_gametype.integer == GT_BR ) {
 		ent->nextthink = 0;
 		ent->think = 0;
 	} else {
@@ -894,10 +894,17 @@ void G_SpawnItem (gentity_t *ent, gitem_t *item) {
 		return;
 
 	ent->item = item;
-	// some movers spawn on the second frame, so delay item
-	// spawns until the third frame so they can ride trains
-	ent->nextthink = level.time + FRAMETIME * 2;
-	ent->think = FinishSpawningItem;
+
+	if( g_gametype.integer == GT_BR && level.spawning ) {
+		// battle royale: hide weapons placed by map designers
+		ent->s.eFlags |= EF_NODRAW;
+		ent->r.contents = 0;
+	} else {
+		// some movers spawn on the second frame, so delay item
+		// spawns until the third frame so they can ride trains
+		ent->nextthink = level.time + FRAMETIME * 2;
+		ent->think = FinishSpawningItem;
+	}
 
 	ent->physicsBounce = 0.50;		// items are bouncy
 

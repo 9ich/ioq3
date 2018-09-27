@@ -1275,6 +1275,7 @@ static const char *gameNames[] = {
 	"Free For All",
 	"Tournament",
 	"Single Player",
+	"Battle Royale",
 	"Team Deathmatch",
 	"Capture the Flag",
 	"One Flag CTF",

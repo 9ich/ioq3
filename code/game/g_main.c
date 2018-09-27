@@ -95,6 +95,11 @@ vmCvar_t	g_enableDust;
 vmCvar_t	g_enableBreath;
 vmCvar_t	g_proxMineTimeout;
 #endif
+vmCvar_t	g_brStages;
+vmCvar_t	g_brFinalRadius;
+vmCvar_t	g_brShrinkDuration;
+vmCvar_t	g_brStageDuration;
+vmCvar_t	g_brItemSpawnInterval;
 
 static cvarTable_t		gameCvarTable[] = {
 	// don't override the cheat state set by the system
@@ -116,6 +121,12 @@ static cvarTable_t		gameCvarTable[] = {
 	{ &g_fraglimit, "fraglimit", "20", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
 	{ &g_timelimit, "timelimit", "0", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
 	{ &g_capturelimit, "capturelimit", "8", CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_NORESTART, 0, qtrue },
+
+	{ &g_brStages, "g_brStages", "6", CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qtrue },
+	{ &g_brFinalRadius, "g_brFinalRadius", "340.0", CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qtrue },
+	{ &g_brShrinkDuration, "g_brShrinkDuration", "10000", CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qtrue },
+	{ &g_brStageDuration, "g_brStageDuration", "15000", CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qtrue },
+	{ &g_brItemSpawnInterval, "g_brItemSpawnInterval", "4000", CVAR_SERVERINFO | CVAR_ARCHIVE, 0, qtrue },
 
 	{ &g_synchronousClients, "g_synchronousClients", "0", CVAR_SYSTEMINFO, 0, qfalse  },
 
@@ -400,6 +411,169 @@ void G_UpdateCvars( void ) {
 }
 
 /*
+=================
+BRRandomPlace
+=================
+*/
+static void BRRandomPlace(vec3_t out, vec3_t mins, vec3_t maxs) {
+	int i;
+
+	//
+	// find a place which is inside the sphere
+	// AND which appears to be inside the hull of the map
+	// AND is open enough to accommodate mins,maxs
+	//
+	// this heuristic needs work
+	//
+	for(i = 10000; i; i--){
+		vec3_t start, end;
+		trace_t tr;
+
+		VectorSet(start, crandom()*level.brRadius, crandom()*level.brRadius, crandom()*level.brRadius);
+		VectorAdd(start, level.brOrigin, start);
+
+		VectorSet(end, start[0]+INFINITE, start[1], start[2]);
+		trap_Trace(&tr, start, mins, maxs, end, 0, MASK_ALL);
+		if(tr.startsolid || tr.fraction == 1.0f)
+			continue;
+
+		end[0] = start[0]-INFINITE;
+		trap_Trace(&tr, start, mins, maxs, end, 0, MASK_ALL);
+		if(tr.startsolid || tr.fraction == 1.0f)
+			continue;
+
+		VectorSet(end, start[0], start[1]+INFINITE, start[2]);
+		trap_Trace(&tr, start, mins, maxs, end, 0, MASK_ALL);
+		if(tr.startsolid || tr.fraction == 1.0f)
+			continue;
+
+		end[1] = start[1]-INFINITE;
+		trap_Trace(&tr, start, mins, maxs, end, 0, MASK_ALL);
+		if(tr.startsolid || tr.fraction == 1.0f)
+			continue;
+
+		VectorSet(end, start[0], start[1], start[2]+INFINITE);
+		trap_Trace(&tr, start, mins, maxs, end, 0, MASK_ALL);
+		if(tr.startsolid || tr.fraction == 1.0f)
+			continue;
+
+		end[2] = start[2]-INFINITE;
+		trap_Trace(&tr, start, mins, maxs, end, 0, MASK_ALL);
+		if(tr.startsolid || tr.fraction == 1.0f)
+			continue;
+
+		VectorCopy(start, out);
+		break;
+	}
+
+	if(VectorLengthSquared(out) == 0.0f){
+		gentity_t *e;
+		static gentity_t *choices[MAX_GENTITIES];
+		int nchoices = 0;
+
+		for(e = &g_entities[MAX_CLIENTS]; e < &g_entities[level.num_entities]; e++){
+			if(!e->inuse)
+				continue;
+			if(level.brRadius != 0 && Distance(e->s.origin, level.brOrigin) > level.brRadius)
+				continue;
+			choices[nchoices++] = e;
+		}
+		if(nchoices == 0)
+			return;
+
+		VectorCopy(choices[rand()%nchoices]->s.origin, out);
+	}
+}
+
+/*
+============
+G_InitBattleRoyale
+
+============
+*/
+void G_InitBattleRoyale( void ) {
+	gentity_t *e;
+	static vec3_t mins = {-15, -15, -24};
+	static vec3_t maxs = {15, 15, 32};
+
+	G_Printf("------- G_InitBattleRoyale -------\n");
+
+	// find the sphere that encloses all entities
+	level.brRadius = 0.0f;
+	for(e = g_entities; e < &g_entities[level.num_entities]; e++){
+		if(!e->inuse)
+			continue;
+		level.brRadius = MAX(level.brRadius, Distance(e->s.origin, level.brOrigin));
+	}
+	if(level.brRadius == 0.0f)
+		level.brRadius = 2000.0f;
+
+	if(1){
+		gentity_t *e;
+		static gentity_t *choices[MAX_GENTITIES];
+		int nchoices = 0;
+
+		for(e = &g_entities[MAX_CLIENTS]; e < &g_entities[level.num_entities]; e++){
+			if(!e->inuse)
+				continue;
+			if(Q_stricmp(e->classname, "target_location") != 0 && 
+			   Q_stricmp(e->classname, "info_player_deathmatch") != 0)
+				continue;
+			if(trap_PointContents(e->s.origin, e->s.number) != 0)
+				continue;
+			choices[nchoices++] = e;
+		}
+		if(nchoices != 0)
+			VectorCopy(choices[rand()%nchoices]->s.origin, level.brOrigin);
+	}
+	if(VectorLengthSquared(level.brOrigin) == 0.0f)
+		BRRandomPlace(level.brOrigin, mins, maxs);
+	if(VectorLengthSquared(level.brOrigin) == 0.0f)
+		G_Printf("WARNING: couldn't find a good place to put the cage origin\n");
+
+	// resize the sphere to new origin
+	level.brRadius = 0.0f;
+	for(e = g_entities; e < &g_entities[level.num_entities]; e++){
+		if(!e->inuse)
+			continue;
+		level.brRadius = MAX(level.brRadius, Distance(e->s.origin, level.brOrigin));
+	}
+	if(level.brRadius == 0.0f)
+		level.brRadius = 2000.0f;
+
+	// drop it to the floor
+	{
+		trace_t tr;
+		vec3_t end, mins, maxs;
+
+		VectorSet(mins, -1, -1, 1);
+		VectorSet(maxs, 1, 1, 1);
+		VectorSet(end, level.brOrigin[0], level.brOrigin[1], level.brOrigin[2]-INFINITE);
+		trap_Trace(&tr, level.brOrigin, mins, maxs, end, 0, MASK_SHOT);
+		if(tr.fraction != 1.0f)
+			VectorCopy(tr.endpos, level.brOrigin);
+	}
+
+	level.brStage = g_brStages.integer - 1;
+	level.brRadius += 200;
+	level.brInitRadius = level.brRadius;
+	level.brStageRadiusA = level.brStageRadiusB = level.brRadius;
+	level.brFinalRadius = g_brFinalRadius.value;
+	level.brStageTime = level.time;
+	level.brNextStageTime = level.time + g_brStageDuration.integer;
+	level.brItemSpawnTime = level.time + g_brItemSpawnInterval.integer;
+
+	trap_SetConfigstring(CS_BR_STAGE, va("%d", level.brStage));
+	trap_SetConfigstring(CS_BR_STAGE_TIME, va("%d", level.brStageTime));
+	trap_SetConfigstring(CS_BR_NEXT_STAGE_TIME, va("%d", level.brNextStageTime));
+	trap_SetConfigstring(CS_BR_SHRINK_DURATION, va("%d", level.brShrinkDuration));
+	trap_SetConfigstring(CS_BR_ORIGIN, va("%.2f %.2f %.2f", level.brOrigin[0], level.brOrigin[1], level.brOrigin[2]));
+	trap_SetConfigstring(CS_BR_RADIUS_A, va("%.2f", level.brStageRadiusA));
+	trap_SetConfigstring(CS_BR_RADIUS_B, va("%.2f", level.brStageRadiusB));
+}
+
+
+/*
 ============
 G_InitGame
 
@@ -493,6 +667,10 @@ void G_InitGame( int levelTime, int randomSeed, int restart ) {
 	}
 
 	SaveRegisteredItems();
+
+	if( g_gametype.integer == GT_BR ) {
+		G_InitBattleRoyale();
+	}
 
 	G_Printf ("-----------------------------------\n");
 
@@ -1750,6 +1928,70 @@ void CheckCvars( void ) {
 	}
 }
 
+
+/*
+==================
+CheckBattleRoyale
+==================
+*/
+void CheckBattleRoyale( void ) {
+	if(level.brStage > 0 && level.brNextStageTime != 0 && level.time > level.brNextStageTime){
+		level.brStage--;
+		level.brStageRadiusA = level.brRadius;
+		if(g_brStages.integer != 0)
+			level.brStageRadiusB = level.brFinalRadius + (level.brInitRadius - level.brFinalRadius)/g_brStages.integer * level.brStage;
+		else
+			level.brStageRadiusB = level.brRadius;
+		level.brStageTime = level.time;
+		level.brNextStageTime = level.time + g_brStageDuration.integer;
+		level.brShrinkDuration = g_brShrinkDuration.integer;
+	}else if (level.time < level.brStageTime + level.brShrinkDuration && level.brShrinkDuration != 0){
+		level.brRadius = LERP(level.brStageRadiusA, level.brStageRadiusB, MIN(1.0f, (float)(level.time-level.brStageTime)/level.brShrinkDuration));
+	}else if(g_brStages.integer != 0){
+			level.brWarnRadius = level.brFinalRadius + (level.brInitRadius - level.brFinalRadius)/g_brStages.integer * (level.brStage-1);
+	}
+	trap_SetConfigstring(CS_BR_STAGE, va("%d", level.brStage));
+	trap_SetConfigstring(CS_BR_STAGE_TIME, va("%d", level.brStageTime));
+	trap_SetConfigstring(CS_BR_NEXT_STAGE_TIME, va("%d", level.brNextStageTime));
+	trap_SetConfigstring(CS_BR_SHRINK_DURATION, va("%d", level.brShrinkDuration));
+	trap_SetConfigstring(CS_BR_ORIGIN, va("%.2f %.2f %.2f", level.brOrigin[0], level.brOrigin[1], level.brOrigin[2]));
+	trap_SetConfigstring(CS_BR_RADIUS_A, va("%.2f", level.brStageRadiusA));
+	trap_SetConfigstring(CS_BR_RADIUS_B, va("%.2f", level.brStageRadiusB));
+	trap_SetConfigstring(CS_BR_WARN_RADIUS, va("%.2f", level.brWarnRadius));
+
+	// toss items into the cage
+	if(level.time >= level.brItemSpawnTime){
+		gentity_t *e;
+		gitem_t *it;
+		static vec3_t mins = {-ITEM_RADIUS, -ITEM_RADIUS, -ITEM_RADIUS};
+		static vec3_t maxs = {ITEM_RADIUS, ITEM_RADIUS, ITEM_RADIUS};
+		int n;
+
+		level.brItemSpawnTime = level.time + g_brItemSpawnInterval.integer;
+
+		for(n = 1000; n; n--){
+			it = &bg_itemlist[rand()%bg_numItems];
+			if((it->giType == IT_WEAPON ||
+			   it->giType == IT_HEALTH ||
+			   it->giType == IT_ARMOR ||
+			   it->giType == IT_POWERUP) && 
+			   (it->giTag != WP_GRAPPLING_HOOK &&
+			   it->giTag != WP_GAUNTLET)){
+				break;
+			}
+		}
+		if(!n)
+			return;
+
+		e = G_Spawn();
+		BRRandomPlace(e->s.origin, mins, maxs);
+		e->classname = it->classname;
+		G_SpawnItem(e, it);
+		FinishSpawningItem(e);
+	}
+}
+
+
 /*
 =============
 G_RunThink
@@ -1871,6 +2113,8 @@ void G_RunFrame( int levelTime ) {
 
 	// see if it is time to do a tournement restart
 	CheckTournament();
+
+	CheckBattleRoyale();
 
 	// see if it is time to end the level
 	CheckExitRules();
